@@ -6,14 +6,14 @@ class User {
   constructor(name,email,cart,id){
     this.name = name;
     this.email = email;
-    this.cart = cart;
+    this.cart = cart || {items: []};
     this._id = id;
   }
   save(){
     const db = getDb();
       return db.collection('users').insertOne(this)
     .then(result => {
-      console.log(result);
+    //   console.log(result);
     })
     .catch(err => console.log(err))
   }
@@ -56,7 +56,33 @@ class User {
         return i.productId.toString() !== prodId.toString()
     })
     const updatedCart = {items: cartProduct }
-    return db.collection('users').updateOne({_id: new mongoDb.ObjectId(this._id)},{$set: {cart: updatedCart}})
+    return db.collection('users').updateOne({_id: new mongoDb.ObjectId(this._id)},{$set: {cart: { items: updatedCart }}})
+  }
+
+  addOrders() {
+    const db = getDb();
+    return this.getCart().then(products => {
+        const order = {
+            items: products,
+            user: {
+                _id: new mongoDb.ObjectId(this._id)
+            }
+        }
+       return db.collection('orders').insertOne(order)
+    }).then(result => {
+        this.cart = {items: []}
+        return db.collection('users').updateOne({_id: new mongoDb.ObjectId(this._id)},{$set: {cart: { items: [] }}})
+    })
+
+  }
+  
+  getOrders(){
+    const db = getDb();
+    return db.collection('orders').find({'user._id': new mongoDb.ObjectId(this._id)}).toArray()
+    .then(orders => {
+        console.log(orders)
+        return orders
+    }).catch(err => console.log(err));
   }
 
   static findUserById(userId){
@@ -65,7 +91,7 @@ class User {
     .find({_id: new mongoDb.ObjectId(userId)})
     .next()
     .then(user => {
-      console.log(user);
+    //   console.log(user);
       return user
 
     })
